@@ -1,114 +1,186 @@
 #include <iostream>
+#include <thread>
 #include <fstream>
-#include <string>
-#include <vector>
-
 using namespace std;
 
+const int T = 4; // Threads
+const int R = 3; // Resources
+
+string resourceNames[R]; // Store resource name
+int maxResource[R]; // Avaliable resources of each type
+
+string threadName[T]; // Store thread name
+int resourcesRequested[T][R]; // Number of each resource that each thread may want
+int resourcesAllocated[T][R]; // Number of each resource that each thread is using
+int neededResources[T][R]; // Number of resources that each thread might still request
+
+int currentAvailResources[R]; // Current available resources
+
+
+void readFile(string filename);
+void getNeededRecourses();
+void getAvailableRecourses();
+bool isSafe();
+
+
 int main() {
-    const int T = 4; // number of threads
-    const int R = 3; // number of resources
+    readFile("/Users/mikey/documents/compOperatingSys/data.txt");
 
-    string resourceNames[R]; // store resource names
-    int maxResource[R]; // store maximum resources in the system
-    string threadsName[T]; // threads names
-    int resourcesRequested[T][R]; // resources requested for each thread
-    int resourceAllocated[T][R]; // allocated resources for each thread
-    int neededResources[T][R]; // This matrix is computed to show the needed resources for each thread
-    int currentAvailResources[R]; // This a computed array of the number of resources available
+    cout << endl;
 
+    int numSafeStates = isSafe();
+    if (numSafeStates > 0) {
+        cout << "Number of safe states: " << numSafeStates << endl;
+    } else {
+        cout << "No safe state found." << endl;
+    }
+
+    return 0;
+}
+
+
+
+
+void readFile(string filename) {
     ifstream fin;
-    fin.open("/Users/mikey/documents/compOperatingSys/data.txt");
+    fin.open(filename);
+
+    if (!fin) {
+        cout << "Error opening file: " << filename << endl;
+        return;
+    }
+    char ignore;
 
     // Read the available resources
     for (int i = 0; i < R; i++) {
         fin >> resourceNames[i] >> maxResource[i];
     }
 
-    // Read the threads and their maximum resource requests
+    fin >> ignore; // Handles the #
+
+    // Read the requested resources for each thread
     for (int i = 0; i < T; i++) {
-        fin >> threadsName[i];
+        fin >> threadName[i];
         for (int j = 0; j < R; j++) {
             fin >> resourcesRequested[i][j];
         }
     }
 
-    // Read the allocated resources for each thread
+    fin >> ignore;
+
+    // Read the allocated resources
     for (int i = 0; i < T; i++) {
         for (int j = 0; j < R; j++) {
-            fin >> resourceAllocated[i][j];
-            neededResources[i][j] = resourcesRequested[i][j] - resourceAllocated[i][j]; // initialize neededResources
+            fin >> resourcesAllocated[i][j];
         }
     }
+}
 
-    // Compute current available resources
-    for (int j = 0; j < R; j++) {
-        int totalAllocated = 0;
-        for (int i = 0; i < T; i++) {
-            totalAllocated += resourceAllocated[i][j];
-        }
-        currentAvailResources[j] = maxResource[j] - totalAllocated;
-    }
-
-    // Implement the Banker's algorithm
-    int safeSeq[T];
-    int work[R];
-    bool finish[T];
-    for (int i = 0; i < R; i++) {
-        work[i] = currentAvailResources[i];
-    }
+void getNeededRecourses() {
     for (int i = 0; i < T; i++) {
-        finish[i] = false;
+        for (int j = 0; j < R; j++) {
+            // Needed = Max need to complete - Allocated
+            neededResources[i][j] = resourcesRequested[i][j] - resourcesAllocated[i][j];
+        }
     }
-    int count = 0;
-    while (count < T) {
-        bool found = false;
-        for (int i = 0; i < T; i++) {
-            if (!finish[i]) {
-                int j;
-                for (j = 0; j < R; j++) {
-                    if (neededResources[i][j] > work[j]) {
+}
+
+void getAvailableRecourses() {
+    // Get available resources
+    for (int i = 0; i < R; i++) {
+        currentAvailResources[i] = maxResource[i];
+    }
+
+    // Available = Max - Sum of Allocated
+    for (int i = 0; i < T; i++) {
+        for (int j = 0; j < R; j++) {
+            currentAvailResources[j] -= resourcesAllocated[i][j];
+        }
+    }
+}
+
+bool isSafe() {
+    string completedThreads[T];
+    bool finished[T];
+    int safeSequenceCount = 0; // Counter for safe sequences
+
+    // Set all finished to false.
+    for (int i = 0; i < T; i++) {
+        finished[i] = false;
+    }
+
+    getNeededRecourses();
+    getAvailableRecourses();
+
+    for (int i = 0; i < T; i++) {
+
+        // Find thread that can be completed
+        if (!finished[i]) {
+            // Check threads
+            for (int j = 0; j < T; j++) {
+
+                // Check if process already completed.
+                bool processCompleted = false;
+                for (int i = 0; i < T; i++) {
+                    if (threadName[j] == completedThreads[i]) {
+                        processCompleted = true;
+                    }
+                }
+
+                if (!processCompleted) {
+
+                    int hasAllResources = 0;
+                    for (int k = 0; k < R; k++) {
+
+                        if (currentAvailResources[k] >= neededResources[j][k]) {
+                            hasAllResources++;
+                        }
+                    }
+                    if (hasAllResources == R) {
+                        // Set thread to finished if resources complete
+                        finished[i] = true;
+                        completedThreads[i] = threadName[j];
+                        //Add back resources to available.
+                        for (int k = 0; k < R; k++) {
+                            currentAvailResources[k] += resourcesAllocated[j][k];
+                        }
                         break;
                     }
                 }
-                if (j == R) {
-                    for (int k = 0; k < R; k++) {
-                        work[k] += resourceAllocated[i][k];
-                    }
-                    safeSeq[count++] = i;
-                    finish[i] = true;
-                    found = true;
-                    cout << "Thread " << i << " finished. Current state: " << endl;
-                    cout << "Work: ";
-                    for (int l = 0; l < R; l++) {
-                        cout << work[l] << " ";
-                    }
-                    cout << endl;
-                    cout << "Finish: ";
-                    for (int l = 0; l < T; l++) {
-                        cout << finish[l] << " ";
-                    }
-                    cout << endl;
-                    cout << "Safe sequence: ";
-                    for (int l = 0; l < count; l++) {
-                        cout << threadsName[safeSeq[l]] << " ";
-                    }
-                    cout << endl;
-                }
             }
         }
-        if (!found) {
-            cout << "No safe state available" << endl;
-            return 0;
+    }
+
+    bool isSafe;
+
+    for (int i = 0; i < T; i++) {
+        if (!finished[i]) {
+            isSafe = false;
+            cout << "No safe state possible" << endl;
+            break;
+        }
+        else {
+            isSafe = true;
         }
     }
 
-    // Print the safe sequence
-    cout << "Safe sequence: ";
-    for (int i = 0; i < T; i++) {
-        cout << threadsName[safeSeq[i]] << " ";
+    if (isSafe) {
+        safeSequenceCount++; // Increment the counter
+        cout << "The safe state is: {";
+        for (int i = 0; i < T; i++) {
+            cout << completedThreads[i];
+            if (i != T - 1) {
+                cout << ", ";
+            }
+        }
+        cout << "}";
+        cout << endl;
     }
-    cout << endl;
 
-    return 0;
+    if (safeSequenceCount > 1) {
+        cout << "There are " << safeSequenceCount << " safe sequences" << endl;
+    }
+
+    return isSafe;
 }
+
