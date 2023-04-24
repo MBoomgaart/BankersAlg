@@ -14,7 +14,7 @@ int resourcesRequested[T][R]; // Number of each resource that each thread may wa
 int resourcesAllocated[T][R]; // Number of each resource that each thread is using
 int neededResources[T][R]; // Number of resources that each thread might still request
 
-int currentAvailResources[R]; // Current available resources
+int currentAvailResource[R]; // Current available resources
 
 
 void readFile(string filename);
@@ -88,13 +88,13 @@ void getNeededRecourses() {
 void getAvailableRecourses() {
     // Get available resources
     for (int i = 0; i < R; i++) {
-        currentAvailResources[i] = maxResource[i];
+        currentAvailResource[i] = maxResource[i];
     }
 
     // Available = Max - Sum of Allocated
     for (int i = 0; i < T; i++) {
         for (int j = 0; j < R; j++) {
-            currentAvailResources[j] -= resourcesAllocated[i][j];
+            currentAvailResource[j] -= resourcesAllocated[i][j];
         }
     }
 }
@@ -132,7 +132,7 @@ bool isSafe() {
                     int hasAllResources = 0;
                     for (int k = 0; k < R; k++) {
 
-                        if (currentAvailResources[k] >= neededResources[j][k]) {
+                        if (currentAvailResource[k] >= neededResources[j][k]) {
                             hasAllResources++;
                         }
                     }
@@ -142,7 +142,7 @@ bool isSafe() {
                         completedThreads[i] = threadName[j];
                         //Add back resources to available.
                         for (int k = 0; k < R; k++) {
-                            currentAvailResources[k] += resourcesAllocated[j][k];
+                            currentAvailResource[k] += resourcesAllocated[j][k];
                         }
                         break;
                     }
