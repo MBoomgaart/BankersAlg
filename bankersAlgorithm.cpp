@@ -22,7 +22,6 @@ void getNeededRecourses();
 void getAvailableRecourses();
 bool isSafe();
 
-
 int main() {
     readFile("/Users/mikey/documents/compOperatingSys/data.txt");
 
@@ -37,9 +36,6 @@ int main() {
 
     return 0;
 }
-
-
-
 
 void readFile(string filename) {
     ifstream fin;
