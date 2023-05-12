@@ -1,4 +1,4 @@
-// COMPILE USING -std=c++11
+// use -std=c++11 when compiling using g++
 
 #include <iostream>
 #include <thread>
@@ -43,7 +43,7 @@ int main() {
     return 0;
 }
 
-// Allows for array to be filled with random numbers or 0 to ARRAY_SIZE.
+// Allows for array to be filled with random numbers or sequentially from 0 to ARRAY_SIZE
 void createArray(bool random) {
     if (random) {
         for (int i = 0; i < ARRAY_SIZE; i++) {
@@ -57,19 +57,19 @@ void createArray(bool random) {
     }
 }
 
-// Sum even numbers.
+// Sum even numbers
 void evenThread() {
     int sum = 0;
     for (int i = 0; i < ARRAY_SIZE; i += 2) {
         sum += num_array[i];
     }
 
-    // This thread has a lock to update shared variable.
+    // This thread has a lock to update shared variable
     lock_guard<mutex> lock(mtx);
     even_sum = sum;
     evenFinished = true;
 
-    // Notify thread d that thread b is complete.
+    // Notify thread d that thread b is complete
     even_cv.notify_one();
 }
 
@@ -80,12 +80,12 @@ void oddThread() {
         sum += num_array[i];
     }
 
-    // This thread has a lock to update shared variable.
+    // This thread has a lock to update shared variable
     lock_guard<mutex> lock(mtx);
     odd_sum = sum;
     oddFinished = true;
 
-    // Notify thread d that thread b is complete.
+    // Notify thread d that thread b is complete
     odd_cv.notify_one();
 }
 
